@@ -125,7 +125,7 @@ own source/build packaging:
 | Compendium artifact | SHA-256 | Runtime coverage |
 | --- | --- | --- |
 | Earlier companion compatibility build | `f03410a4fb2ec33f3b89cdddfe2b9ace7db371dead324f67c4b087ae3bf669e8` | Both two-plugin load orders above |
-| Final standalone public build | `97682c1675085aa72cbb0d219d9a6381e80dd2a828efb99f0493d5b0a79d58e2` | Full installed stack: cold town UI, decorated payment/separation, actual quest HUD |
+| Final standalone public build | `753a00043c0d2c2e496cdac04e41c52322e2e0458e7580fea4200b1ccdd53b7b` | Full installed stack: cold town UI, decorated payment/separation, actual quest HUD |
 
 Armor Fusion remained
 `aeaf19c048f08845f44c269842cc2ab07e4d1c678c70c4a53f76546a2aa76d11`
