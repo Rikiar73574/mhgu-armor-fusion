@@ -1,0 +1,1 @@
+{ global: init; fini; test_bridge_init; fusion_entry_matches; local: *; };

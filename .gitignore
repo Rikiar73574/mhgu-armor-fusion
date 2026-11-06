@@ -1,0 +1,13 @@
+/build/
+/dist/
+/generated/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.nro
+*.elf
+*.so
+*.bin
+*.afus
+
+/game/

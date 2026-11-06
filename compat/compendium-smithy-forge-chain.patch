@@ -1,0 +1,52 @@
+--- a/compendium/mod/src/smithy.rs
++++ b/compendium/mod/src/smithy.rs
+@@ -29,5 +29,15 @@
+  if world::TREE[node].attack!=u16at(0x2240){return;}
+  if let Some(recipe)=weapon_data::WEAPONS[node].recipes.iter().position(|r|r.label=="Upgrade"){s.selection=Some((node,recipe));}
+ }}
+-pub fn install(){unsafe{let target=forge::mem::text_addr()+0x6f1ae8;if ptr::read_unaligned(target as *const u32)!=0xe92d41f0{return;}create(&raw mut HOOK,target,update as *const () as u32,&raw mut ORIGINAL);}}
++pub fn install(){unsafe{
++ let target=forge::mem::text_addr()+0x6f1ae8;let word=ptr::read_unaligned(target as *const u32);
++ // Recomp Forge chains entry hooks through their original trampolines. Only
++ // recognize its literal ARM jump into the shared plugin region; other patched
++ // or wrong-version entries still fail closed. This hook does not inspect LR.
++ let compatible=word==0xe92d41f0||word==0xe51ff004&&{
++  let detour=ptr::read_unaligned((target+4)as *const u32);
++  (0x03200000..0x03e00000).contains(&detour)&&detour&3==0
++ };
++ if !compatible{return;}create(&raw mut HOOK,target,update as *const () as u32,&raw mut ORIGINAL);
++}}
+ pub fn frame()->Option<(usize,usize)>{unsafe{let s=&mut *STATE.0.get();let result=if s.fresh{s.selection}else{None};s.fresh=false;if result.is_none(){super::native_hint::expire();}result}}
+--- a/compendium/tests/arm_native_hint.py
++++ b/compendium/tests/arm_native_hint.py
+@@ -28,6 +28,24 @@
+   r=[uc.reg_read(x)for x in [UC_ARM_REG_R0,UC_ARM_REG_R1,UC_ARM_REG_R2,UC_ARM_REG_R3]];hooks[r[1]]=r[2];put(r[3],native if r[1]==MAIN+0x6439ec else smith_original);uc.reg_write(UC_ARM_REG_R0,r[0]);return True
+  return False
+ ns['storage_callback']=first
++# Exercise the actual ARM install guard. A Forge entry hook may precede us,
++# but a foreign jump or a wrong-version prologue must never be chained.
++entry=MAIN+0x6f1ae8;saved=(get(entry),get(entry+4))
++for word,destination,accepted in [
++ (0xe92d41f0,saved[1],True),
++ (0xe51ff004,0x03200000,True),
++ (0xe51ff004,0x03dffffc,True),
++ (0xe51ff004,0x031ffffc,False),
++ (0xe51ff004,0x03e00000,False),
++ (0xe51ff004,0x03200001,False),
++ (0xe51ff004,0,False),
++ (0xea000000,0x03200000,False),
++ (0xe92d4010,saved[1],False),
++]:
++ hooks.clear();put(entry,word);put(entry+4,destination)
++ call(ns['symbols']['forge_onInit'])
++ assert (entry in hooks)==accepted,(hex(word),hex(destination),accepted,hooks)
++put(entry,saved[0]);put(entry+4,saved[1]);hooks.clear()
+ call(ns['symbols']['forge_onInit'])
+ obj=HEAP+0x4000;smith=HEAP+0x8000
+ put(obj,MAIN+0x1777c60);put(obj+0x4c,0x34);put(obj+0x50,33)
+@@ -47,4 +65,4 @@
+ # Leaving the upgrade state removes the native hint.
+ struct.pack_into('<H',data,0x5c,0);u.mem_write(smith,bytes(data));call(hooks[MAIN+0x6f1ae8],smith)
+ assert rows[-1][1][0]==0xffffffff and len(labels)==n
+-print('PASS: native row insertion, Help preserved, temporary state restored, full/foreign menus excluded, exit cleanup')
++print('PASS: stock/Forge entry guards, foreign jumps refused, native row insertion, Help preserved, temporary state restored, full/foreign menus excluded, exit cleanup')
