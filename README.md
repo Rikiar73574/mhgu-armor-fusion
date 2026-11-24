@@ -52,33 +52,32 @@ and other restrictions still apply.
 
 The saved base and appearance IDs keep their native layout. The plugin must
 remain enabled for the new class behavior; stock code can narrow a universal
-base to its donor's class again. Cross-class behavior has automated ARM coverage
-with the native game helpers, but paid fusion, equipping, save/reload, previews,
-and multiplayer still need an in-game regression pass for this change. The
-older release validation below does not cover cross-class fusion.
+base to its donor's class again. Automated native-helper tests and the
+[validation record](docs/validation.md) cover paid cross-class fusion,
+separation, save/reload, previews and a two-client shared quest. The record
+identifies the exact tested artifacts and the separate startup-compatibility pass.
 
 ## Other plugins
 
-Forge's plugin region is **12 MiB shared by all loaded NROs**, including each
-image's BSS and alignment. The packaging tool can check other NROs against this
-budget without including them in the archive:
+Older Forge loaders have **12 MiB shared by all NROs**, including BSS and
+alignment. The packaging check uses that conservative budget:
 
 ```sh
 python3 tools/package.py --other-plugin /path/to/hunters_compendium.nro
 ```
 
-The companion Compendium change in `compendium/mod/src/smithy.rs` accepts a
-preceding Forge entry hook on the smithy update function. Use that rebuilt
-Compendium NRO when combining these plugins; the standalone patch and exact
-apply/build instructions are in `compat/compendium-smithy-forge-chain.patch`
-and `compat/README.md` in the source distribution. Stock entries and aligned Forge
-literal jumps into Recomp's plugin region are accepted; other patched entries
-remain rejected. The [Compendium release](https://github.com/Rikiar73574/mhgu-compendium/releases/latest)
-already includes this change; replace the existing Compendium NRO instead of
-enabling a duplicate.
-Armor Fusion's caller-sensitive hooks still require untouched
-stock entries. The three equipment class helpers also require untouched stock
-entries. Other plugins hooking those functions are unsupported.
+The tested Windows Recomp 0.19.2 executable also has a 128 MiB spill arena.
+This lets the full stack load KatSmithy, KatLib, Utility and Fusion together;
+the package check does not account for that additional arena.
+
+Fusion waits for one complete update-callback round before installing hooks,
+allowing stock-prologue-only peers such as KatSmithy to initialize first. Safe
+Forge chains accept aligned literal jumps into the normal or verified Windows
+spill arena; caller-sensitive hooks and equipment class helpers still require
+stock entries. Use the matching [Utility startup fix](https://github.com/Rikiar73574/mhgu-utility/pull/7).
+The old patch in `compat/` documents the original companion entry-chain change,
+not the complete KatSmithy startup fix. Do not enable duplicate Utility NROs or
+combine KatSmithy with another replacement Smithy tree.
 
 ## Build from source
 

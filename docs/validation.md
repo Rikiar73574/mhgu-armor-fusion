@@ -261,3 +261,42 @@ directions. The UI still respects the base armor's native equipment restrictions
 
 Screenshots: [decorated universal base with Gunner appearance](screenshots/crossclass-universal.webp),
 [unmodified multiplayer observer](screenshots/crossclass-multiplayer.webp).
+
+## KatSmithy startup compatibility - 24 November 2026
+
+With the copied full mod stack on the actual Windows Recomp 0.19.2 executable
+**under Wine on Linux**, Fusion's old onInit hook made KatSmithy's first-update
+stock-prologue probe fail (`smithy_win ... GUARD MISMATCH`). Candidate Fusion
+`c4aa1f81a99d970bd702d2205b1821a28b61c1afa6b85d2eea91f7ec8512c4b8`
+keeps text-base/catalog validation in onInit, then preflights and installs all
+hooks once on the second update. Safe chains additionally accept the verified
+Windows spill arena `[0xf0100000,0xf8100000)`; alignment and caller-sensitive
+rejections remain enforced.
+
+The copied-stack hook snapshot resolves game → Fusion `0xf17a4798` → Utility
+`0x033b177c` → KatSmithy `0xf01536f4` → native continuation. This is Windows-build
+execution under Wine, not physical/native Windows OS coverage. Full native-menu
+and UI validation is recorded separately from this startup-chain evidence.
+
+```sh
+make all test test-native GAME_DIR=/home/rikiar/Games/MHGU/data ARM_PYTHON=/tmp/fusion-issue-venv/bin/python
+```
+
+All checks passed, including compiled ARM chaining through a high peer in both
+callback orders, dynamic callback exports, spill boundaries, one-shot failure,
+and unchanged class/pair rules. The earlier paid cross-class transactions and
+two-client quest/appearance/stat pass used Fusion
+`320b2a48018f9b0c0bf6a0b3a75f6b3b2bee19693633511fed0842bbc3506b22`.
+They must not be relabeled as multiplayer tests of the new candidate: this
+candidate changes startup scheduling and safe-entry recognition, not fusion
+policy, classification, transactions or networking.
+
+The same copied full nine-plugin Windows stack then passed KatSmithy's complete
+weapon tree with its 3D preview, native Upgrade Equipment wishlist add/remove,
+and the actual Fusion menu/armor-selector open and cancel. Selector teardown
+restored both UI pointers to zero with byte-identical stable equipment, item
+box, pouch and unchanged 460476z. KatSmithy accepted its stock first-update probe;
+all 16 Fusion hooks were installed. These checks used a separate Wine prefix,
+Xvfb, loopback-only network and private software Vulkan renderer, without
+controlling or restarting the user's game. The installed main files match these
+exact tested candidate NRO hashes; the original files/load order were backed up.

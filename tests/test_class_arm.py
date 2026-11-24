@@ -31,6 +31,10 @@ def main():
         assert len(data) == size
         m.u.mem_write(0x00200000 + address, data)
     m.call('forge_onInit')
+    assert not m.hooks,'native class hooks installed during initialization'
+    m.call('forge_onUpdate',0)
+    assert not m.hooks,'native class hooks installed during first update'
+    m.call('forge_onUpdate',0)
     hooks = dict(m.hooks)
     # Synthetic armor metadata: BM-only, Gunner-only, universal. Native lookup
     # uses +6 (base), while a separate lookup can use +8 (appearance).

@@ -77,5 +77,7 @@ bool fusion_entry_matches(uint32_t address,uint32_t stock,bool caller_sensitive)
     if(first==stock) return true;
     if(caller_sensitive || first!=0xe51ff004u) return false;
     uint32_t detour=LD32(address+4);
-    return !(detour&3) && detour>=0x03200000u && detour<0x03e00000u;
+    /* Stock Recomp arena and the verified Windows 0.19.2 overflow arena. */
+    return !(detour&3) && ((detour>=0x03200000u && detour<0x03e00000u) ||
+                          (detour>=0xf0100000u && detour<0xf8100000u));
 }
