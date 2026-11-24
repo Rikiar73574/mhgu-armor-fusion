@@ -8,6 +8,7 @@ MHGURecomp-fork commit `98ec08f`.
 [Hunter's Compendium companion mod](https://github.com/Rikiar73574/mhgu-compendium)
 
 - Native smithy menus, material picker, rank/slot checks, fees and separation.
+- Cross-class appearances retain the base armor's Blademaster/Gunner eligibility.
 - Native decoration handling and saves, with preview lighting restored on exit.
 - Embedded catalog metadata; one `armor_fusion.nro`, no external AFUS file.
 
@@ -40,6 +41,22 @@ Restart MHGURecomp to load or unload the NRO. Keep a separate save backup before
 using a new mod. The package contains the plugin, this README, license notices, and
 `SHA256SUMS`; it contains no save files, extracted game tables, or game assets.
 
+## Blademaster and Gunner appearances
+
+Hunter armor can use an appearance from either class within the same equipment
+slot and progression rank. The base retains its native class eligibility: a
+Blademaster base remains Blademaster, a Gunner base remains Gunner, and a base
+usable by both remains usable by both. Appearance does not let a Gunner-only
+base serve as Blademaster equipment. Native sex, decorations, already-fused,
+and other restrictions still apply.
+
+The saved base and appearance IDs keep their native layout. The plugin must
+remain enabled for the new class behavior; stock code can narrow a universal
+base to its donor's class again. Cross-class behavior has automated ARM coverage
+with the native game helpers, but paid fusion, equipping, save/reload, previews,
+and multiplayer still need an in-game regression pass for this change. The
+older release validation below does not cover cross-class fusion.
+
 ## Other plugins
 
 Forge's plugin region is **12 MiB shared by all loaded NROs**, including each
@@ -60,7 +77,8 @@ remain rejected. The [Compendium release](https://github.com/Rikiar73574/mhgu-co
 already includes this change; replace the existing Compendium NRO instead of
 enabling a duplicate.
 Armor Fusion's caller-sensitive hooks still require untouched
-stock entries. Other plugins hooking those functions are unsupported.
+stock entries. The three equipment class helpers also require untouched stock
+entries. Other plugins hooking those functions are unsupported.
 
 ## Build from source
 
@@ -72,6 +90,8 @@ for policy tests. The build generates and embeds metadata from `GAME_DIR`.
 make all GAME_DIR=/path/to/game-data
 make test
 make test-arm ARM_PYTHON=/path/to/python-with-unicorn
+# Optional native-class regressions: interpreter also needs the lz4 package.
+make test-native GAME_DIR=/path/to/game-data ARM_PYTHON=/path/to/python-with-unicorn
 python3 tools/package.py --nro build/armor_fusion.nro \
   --output dist/native-armor-fusion.zip
 ```
@@ -90,7 +110,11 @@ tables. Changing `GAME_DIR` or table contents regenerates embedded metadata;
 unchanged inputs retain the existing artifacts. `make test` needs no game data
 and runs the policy, metadata/build, and package checks. `make test-arm` also
 needs the locally generated embedded catalog and a Python interpreter with
-Unicorn installed; set `ARM_PYTHON` to that interpreter.
+Unicorn installed; set `ARM_PYTHON` to that interpreter. `make test-native` adds
+class regressions against the private local `exefs/main` NSO and also needs the
+Python `lz4` package. It executes native class helper bodies under Unicorn;
+metadata lookup and class vtable answers use synthetic fixtures. It does not
+launch MHGURecomp or modify saves.
 
 ## Validation status
 

@@ -93,6 +93,7 @@ def main():
         0x85fe10:0xe92d4010,0x8f0c70:0xe92d4800,0x8f02fc:0xe92d4830,
         0x8f085c:0xe92d4800,0x75bac0:0xe92d4070,0x75d2b4:0xe0800101,
         0x85e5bc:0xe92d41f0,0x85e794:0xe92d4830,0xa88238:0xe590200c,
+        0x2db0b0:0xe92d4070,0x2db160:0xe92d4070,0x2db210:0xe92d4070,
     }
     def boot(patches=None):
         image=ArmImage(ROOT/'build/armor_fusion.elf');image.u.mem_map(0x00200000,0x02800000)
@@ -100,14 +101,16 @@ def main():
         for addr,words in (patches or {}).items():
             for i,word in enumerate(words):image.write32(addr+4*i,word)
         image.call('forge_onInit');return image
-    assert len(boot().hooks)==13,'stock image did not install all native hooks'
+    assert len(boot().hooks)==16,'stock image did not install all native hooks'
     for target in (0x74fd94,0x74ff80,0x75bac0):
         assert not boot({target:(0xe51ff004,0x03201000)}).hooks,f'caller-sensitive conflict {target:x} installed partial fusion'
-    assert len(boot({0x8f1ae8:(0xe51ff004,0x03201000)}).hooks)==13,'Compendium-first smithy chain was rejected'
+    assert len(boot({0x8f1ae8:(0xe51ff004,0x03201000)}).hooks)==16,'Compendium-first smithy chain was rejected'
     for target in (0x340b7c,0x340d60,0x341060,0x860314,0x86549c,0x75bc7c,0x8f0c70,0x8f02fc,0x8f085c):
-        assert len(boot({target:(0xe51ff004,0x03201000)}).hooks)==13,f'safe entry chain {target:x} was rejected'
+        assert len(boot({target:(0xe51ff004,0x03201000)}).hooks)==16,f'safe entry chain {target:x} was rejected'
     for words in ((0xe51ff004,0x031ffffc),(0xe51ff004,0x03e00000),(0xe51ff004,0x03200001),(0xea000000,0x03201000)):
         assert not boot({0x8f1ae8:words}).hooks,'foreign/unaligned hook bypassed version guard'
     assert not boot({0x85fcec:(0xe51ff004,0x03201000)}).hooks,'native factory conflict installed partial fusion'
-    print('ARM adapter preflight: stock + ten safe chains PASS; three sensitive conflicts + foreign/factory conflicts fail closed before all hooks PASS')
+    for target in (0x2db0b0,0x2db160,0x2db210):
+        assert not boot({target:(0xe51ff004,0x03201000)}).hooks,'classification conflict installed partial fusion'
+    print('ARM adapter preflight: stock + ten safe chains PASS; three sensitive + three classification conflicts + foreign/factory conflicts fail closed before all hooks PASS')
 if __name__=='__main__':main()

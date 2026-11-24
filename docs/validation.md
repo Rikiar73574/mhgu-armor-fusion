@@ -156,3 +156,45 @@ That baseline Compendium SHA-256 was
 This establishes the warning predates these releases; it does not establish
 correct gauge drawing or exercise every unrelated plugin's combat features.
 All owned full-stack and baseline clients were cleanly closed.
+
+
+## Cross-class appearance change - 2026-11-24
+
+The runtime matrix above describes the older release hash, not this change.
+Issue #1 was traced against the local MHGU 1.4.0 NSO without running a game
+client or modifying saves:
+
+- Native commit `0x348f00` keeps the base ID at record `+6` and writes the donor
+  appearance ID at `+8` (`0x349068..0x349090`).
+- `0x2db0b0` and `0x2db160` narrow a universal base's Blademaster/Gunner answers
+  using its donor. `0x2db210` detects that narrowing; the commit's final branch
+  at `0x3491a4..0x3491c4` can then unequip the base.
+- Native pair validation sets only bit `0x20` for class incompatibility at
+  `0x340e6c..0x340f54`. The adapter now clears that bit for catalog-recognized,
+  same-rank, same-slot pairs in its owned hunter-fusion UI. Other bits remain.
+- Three guarded class hooks call their stock originals with a private copy of
+  the first ten record bytes whose appearance ID is zero. This preserves the
+  base's native eligibility and disables donor-driven unequipping without
+  changing equipment or appearance fields. These hooks apply to existing fused
+  hunter armor as well as newly fused armor and require stock entry points.
+
+`make all test test-native GAME_DIR=/path/to/game-data
+ARM_PYTHON=/path/to/python-with-unicorn-and-lz4` passed. The ordinary catalog,
+policy, packaging, compiled ARM bridge and hook-preflight checks passed.
+`tests/test_class_arm.py` loads the private local NSO and executes its actual
+class helper bodies together with the compiled adapter and bridge. Only the
+metadata lookup and vtable class/slot answers are synthetic. Before the fix,
+a universal base with Gunner appearance returned `(BM=0, Gunner=1, narrow=1)`;
+the regression now requires `(1,1,0)`.
+
+The new ARM matrix covers all five hunter record slots, both class directions,
+universal bases with either donor class, unfused armor, unknown metadata,
+non-hunter pass-through, unchanged equipment bytes and the native appearance-ID
+getter. Pair-hook cases cover class-bit removal, retention of other native
+restriction bits, rank and slot rejection, and unowned/non-hunter UI scopes.
+The three new class-hook conflicts stop initialization before any hook installs.
+
+Paid cross-class fusion, actual weapon/equipment changes, previews, native
+save/cold reload and multiplayer have not been tested for this change. The
+synthetic metadata fixtures do not establish every real armor combination.
+No runtime parity claim from the older release is extended to this change.
