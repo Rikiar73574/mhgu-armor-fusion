@@ -194,7 +194,70 @@ getter. Pair-hook cases cover class-bit removal, retention of other native
 restriction bits, rank and slot rejection, and unowned/non-hunter UI scopes.
 The three new class-hook conflicts stop initialization before any hook installs.
 
-Paid cross-class fusion, actual weapon/equipment changes, previews, native
-save/cold reload and multiplayer have not been tested for this change. The
-synthetic metadata fixtures do not establish every real armor combination.
-No runtime parity claim from the older release is extended to this change.
+The actual runtime pass below supplements those isolated native-helper tests.
+The synthetic metadata fixtures alone do not establish every real combination.
+
+## Runtime regression pass - 2026-11-24
+
+Tested NRO SHA-256:
+`320b2a48018f9b0c0bf6a0b3a75f6b3b2bee19693633511fed0842bbc3506b22`.
+The private Linux runtime used stock source `06fa605`, with no core fusion, and
+only its plugin/trampoline/stub/HLE memory layout expanded to accommodate peer
+mods. Strict matching generated-game-library identity was retained. Tests used
+copied saves, separate settings/mods, dummy audio, rejected hardware controllers,
+Xvfb and a loopback-only network namespace. The running user's game, save and
+installed mods were not controlled or replaced.
+
+| Native transaction | Result |
+| --- | --- |
+| Equipped Hunting Blademaster armor, Gunner appearance | All five slots passed paid fusion; equipment, skills and stats retained |
+| Equipped Hunting Gunner head with ranged weapon, Blademaster appearance | Paid fusion and exact separation passed; Gunner base stayed equipped |
+| Equipped decorated universal Leather head, Gunner appearance | Paid fusion and separation passed; decoration and stats preserved |
+| HR Leather head, HR Bherna Gunner appearance | Paid fusion and exact separation passed |
+| G Bherna head, G Gunner appearance | Paid fusion and exact separation passed |
+
+Each payment compared the native base record, appearance ID, donor consumption,
+fees and material deduction, with no unrelated inventory/equipment changes.
+Separation restored the original base bytes, returned the donor, and charged
+no additional materials or zenny. All six ordered mixed-rank directions between
+LR/HR/G were visibly disabled and rejected confirmation without payment; a
+same-rank cross-class control remained enabled. Native generic rejection wording
+was retained.
+
+The five-slot equipped result was saved through the native game menu. All 106
+occupied equipment records matched the serialized save. A cold process reload
+retained every record, item total, zenny, active skill and hunter statistic.
+The result rendered with HD Textures v4, HD UI v4 and the hunter-font replacement
+at 2560x1440 internal resolution in an isolated window (2488x1400 capture).
+These visual checks cover the exercised sets, not every armor model.
+
+The final Utility hook-order candidate
+`2e869f39ab573e2c0c64f2a214364009b0691317c61c98c58bdd602c769b15e1`
+was loaded with Fusion for the multiplayer run; the other client had neither
+plugin. Actual native Create/Search Hub, quest posting/joining, standby and
+departure placed both clients in Hub quest 10101, stage 1, camp, distinct slots.
+The unmodified observer rendered all five Gunner appearances on the Blademaster
+host. All seven equipment records, decorations, per-piece skill points, active
+skills, identity, health and resistances matched on both sides. Utility's
+in-quest gathering menu opened and closed while the session remained connected.
+
+Raw quest attack/defense initially differed by +6/+12 on each owner's local
+hunter, including the unfused stock control. Both carried Powercharm (item40)
+and Armorcharm (item42). Native functions `0x2e2498` and `0x2e2fdc` apply those
+bonuses through the owner-only pouch query `0x48813c` / local flag `+0x13cc`.
+The actual native pouch-gate bodies were also executed independently in ARM
+emulation. Removing only those known local bonuses from comparison produced
+exact two-way base-stat parity; an injected one-point discrepancy still failed.
+Raw captures were preserved unchanged. This was not a fusion or network-stat fix.
+Both clients then used native Abandon Quest and Save prompts, returned to town,
+and retained the original equipment records, inventory totals and hunter stats.
+
+Private logs, before/paid/separated snapshots, native-save comparisons, plugin
+hashes and multiplayer proof remain in ignored `build/pr-ready-lab/`. This pass
+does not establish Windows/Android, WAN/NAT, four players, every armor pair or
+completed quest rewards. Native transactions retained both the exercised Blademaster and Gunner bases
+with their respective weapons; helper tests cover all five slots in both
+directions. The UI still respects the base armor's native equipment restrictions.
+
+Screenshots: [decorated universal base with Gunner appearance](screenshots/crossclass-universal.webp),
+[unmodified multiplayer observer](screenshots/crossclass-multiplayer.webp).
