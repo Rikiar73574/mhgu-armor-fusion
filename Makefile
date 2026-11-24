@@ -37,7 +37,9 @@ test: | $(BUILD)
 	$(PYTHON) -m unittest discover -s tests -p 'test_package.py' -v
 test-arm: $(BUILD)/test_bridge.elf $(BUILD)/armor_fusion.elf
 	$(ARM_PYTHON) tests/test_bridge_arm.py
+test-native: test-arm
+	$(ARM_PYTHON) tests/test_class_arm.py "$(GAME_DIR)/exefs/main"
 clean:
 	rm -rf $(BUILD)
 FORCE:
-.PHONY: all test test-arm clean FORCE
+.PHONY: all test test-arm test-native clean FORCE

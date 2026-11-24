@@ -8,6 +8,7 @@ MHGURecomp-fork commit `98ec08f`.
 [Hunter's Compendium companion mod](https://github.com/Rikiar73574/mhgu-compendium)
 
 - Native smithy menus, material picker, rank/slot checks, fees and separation.
+- Cross-class appearances retain the base armor's Blademaster/Gunner eligibility.
 - Native decoration handling and saves, with preview lighting restored on exit.
 - Embedded catalog metadata; one `armor_fusion.nro`, no external AFUS file.
 
@@ -40,27 +41,43 @@ Restart MHGURecomp to load or unload the NRO. Keep a separate save backup before
 using a new mod. The package contains the plugin, this README, license notices, and
 `SHA256SUMS`; it contains no save files, extracted game tables, or game assets.
 
+## Blademaster and Gunner appearances
+
+Hunter armor can use an appearance from either class within the same equipment
+slot and progression rank. The base retains its native class eligibility: a
+Blademaster base remains Blademaster, a Gunner base remains Gunner, and a base
+usable by both remains usable by both. Appearance does not let a Gunner-only
+base serve as Blademaster equipment. Native sex, decorations, already-fused,
+and other restrictions still apply.
+
+The saved base and appearance IDs keep their native layout. The plugin must
+remain enabled for the new class behavior; stock code can narrow a universal
+base to its donor's class again. Automated native-helper tests and the
+[validation record](docs/validation.md) cover paid cross-class fusion,
+separation, save/reload, previews and a two-client shared quest. The record
+identifies the exact tested artifacts and the separate startup-compatibility pass.
+
 ## Other plugins
 
-Forge's plugin region is **12 MiB shared by all loaded NROs**, including each
-image's BSS and alignment. The packaging tool can check other NROs against this
-budget without including them in the archive:
+Older Forge loaders have **12 MiB shared by all NROs**, including BSS and
+alignment. The packaging check uses that conservative budget:
 
 ```sh
 python3 tools/package.py --other-plugin /path/to/hunters_compendium.nro
 ```
 
-The companion Compendium change in `compendium/mod/src/smithy.rs` accepts a
-preceding Forge entry hook on the smithy update function. Use that rebuilt
-Compendium NRO when combining these plugins; the standalone patch and exact
-apply/build instructions are in `compat/compendium-smithy-forge-chain.patch`
-and `compat/README.md` in the source distribution. Stock entries and aligned Forge
-literal jumps into Recomp's plugin region are accepted; other patched entries
-remain rejected. The [Compendium release](https://github.com/Rikiar73574/mhgu-compendium/releases/latest)
-already includes this change; replace the existing Compendium NRO instead of
-enabling a duplicate.
-Armor Fusion's caller-sensitive hooks still require untouched
-stock entries. Other plugins hooking those functions are unsupported.
+The tested Windows Recomp 0.19.2 executable also has a 128 MiB spill arena.
+This lets the full stack load KatSmithy, KatLib, Utility and Fusion together;
+the package check does not account for that additional arena.
+
+Fusion waits for one complete update-callback round before installing hooks,
+allowing stock-prologue-only peers such as KatSmithy to initialize first. Safe
+Forge chains accept aligned literal jumps into the normal or verified Windows
+spill arena; caller-sensitive hooks and equipment class helpers still require
+stock entries. Use the matching [Utility startup fix](https://github.com/Rikiar73574/mhgu-utility/pull/7).
+The old patch in `compat/` documents the original companion entry-chain change,
+not the complete KatSmithy startup fix. Do not enable duplicate Utility NROs or
+combine KatSmithy with another replacement Smithy tree.
 
 ## Build from source
 
@@ -72,6 +89,8 @@ for policy tests. The build generates and embeds metadata from `GAME_DIR`.
 make all GAME_DIR=/path/to/game-data
 make test
 make test-arm ARM_PYTHON=/path/to/python-with-unicorn
+# Optional native-class regressions: interpreter also needs the lz4 package.
+make test-native GAME_DIR=/path/to/game-data ARM_PYTHON=/path/to/python-with-unicorn
 python3 tools/package.py --nro build/armor_fusion.nro \
   --output dist/native-armor-fusion.zip
 ```
@@ -90,7 +109,11 @@ tables. Changing `GAME_DIR` or table contents regenerates embedded metadata;
 unchanged inputs retain the existing artifacts. `make test` needs no game data
 and runs the policy, metadata/build, and package checks. `make test-arm` also
 needs the locally generated embedded catalog and a Python interpreter with
-Unicorn installed; set `ARM_PYTHON` to that interpreter.
+Unicorn installed; set `ARM_PYTHON` to that interpreter. `make test-native` adds
+class regressions against the private local `exefs/main` NSO and also needs the
+Python `lz4` package. It executes native class helper bodies under Unicorn;
+metadata lookup and class vtable answers use synthetic fixtures. It does not
+launch MHGURecomp or modify saves.
 
 ## Validation status
 

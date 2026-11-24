@@ -156,3 +156,147 @@ That baseline Compendium SHA-256 was
 This establishes the warning predates these releases; it does not establish
 correct gauge drawing or exercise every unrelated plugin's combat features.
 All owned full-stack and baseline clients were cleanly closed.
+
+
+## Cross-class appearance change - 2026-11-24
+
+The runtime matrix above describes the older release hash, not this change.
+Issue #1 was traced against the local MHGU 1.4.0 NSO without running a game
+client or modifying saves:
+
+- Native commit `0x348f00` keeps the base ID at record `+6` and writes the donor
+  appearance ID at `+8` (`0x349068..0x349090`).
+- `0x2db0b0` and `0x2db160` narrow a universal base's Blademaster/Gunner answers
+  using its donor. `0x2db210` detects that narrowing; the commit's final branch
+  at `0x3491a4..0x3491c4` can then unequip the base.
+- Native pair validation sets only bit `0x20` for class incompatibility at
+  `0x340e6c..0x340f54`. The adapter now clears that bit for catalog-recognized,
+  same-rank, same-slot pairs in its owned hunter-fusion UI. Other bits remain.
+- Three guarded class hooks call their stock originals with a private copy of
+  the first ten record bytes whose appearance ID is zero. This preserves the
+  base's native eligibility and disables donor-driven unequipping without
+  changing equipment or appearance fields. These hooks apply to existing fused
+  hunter armor as well as newly fused armor and require stock entry points.
+
+`make all test test-native GAME_DIR=/path/to/game-data
+ARM_PYTHON=/path/to/python-with-unicorn-and-lz4` passed. The ordinary catalog,
+policy, packaging, compiled ARM bridge and hook-preflight checks passed.
+`tests/test_class_arm.py` loads the private local NSO and executes its actual
+class helper bodies together with the compiled adapter and bridge. Only the
+metadata lookup and vtable class/slot answers are synthetic. Before the fix,
+a universal base with Gunner appearance returned `(BM=0, Gunner=1, narrow=1)`;
+the regression now requires `(1,1,0)`.
+
+The new ARM matrix covers all five hunter record slots, both class directions,
+universal bases with either donor class, unfused armor, unknown metadata,
+non-hunter pass-through, unchanged equipment bytes and the native appearance-ID
+getter. Pair-hook cases cover class-bit removal, retention of other native
+restriction bits, rank and slot rejection, and unowned/non-hunter UI scopes.
+The three new class-hook conflicts stop initialization before any hook installs.
+
+The actual runtime pass below supplements those isolated native-helper tests.
+The synthetic metadata fixtures alone do not establish every real combination.
+
+## Runtime regression pass - 2026-11-24
+
+Tested NRO SHA-256:
+`320b2a48018f9b0c0bf6a0b3a75f6b3b2bee19693633511fed0842bbc3506b22`.
+The private Linux runtime used stock source `06fa605`, with no core fusion, and
+only its plugin/trampoline/stub/HLE memory layout expanded to accommodate peer
+mods. Strict matching generated-game-library identity was retained. Tests used
+copied saves, separate settings/mods, dummy audio, rejected hardware controllers,
+Xvfb and a loopback-only network namespace. The running user's game, save and
+installed mods were not controlled or replaced.
+
+| Native transaction | Result |
+| --- | --- |
+| Equipped Hunting Blademaster armor, Gunner appearance | All five slots passed paid fusion; equipment, skills and stats retained |
+| Equipped Hunting Gunner head with ranged weapon, Blademaster appearance | Paid fusion and exact separation passed; Gunner base stayed equipped |
+| Equipped decorated universal Leather head, Gunner appearance | Paid fusion and separation passed; decoration and stats preserved |
+| HR Leather head, HR Bherna Gunner appearance | Paid fusion and exact separation passed |
+| G Bherna head, G Gunner appearance | Paid fusion and exact separation passed |
+
+Each payment compared the native base record, appearance ID, donor consumption,
+fees and material deduction, with no unrelated inventory/equipment changes.
+Separation restored the original base bytes, returned the donor, and charged
+no additional materials or zenny. All six ordered mixed-rank directions between
+LR/HR/G were visibly disabled and rejected confirmation without payment; a
+same-rank cross-class control remained enabled. Native generic rejection wording
+was retained.
+
+The five-slot equipped result was saved through the native game menu. All 106
+occupied equipment records matched the serialized save. A cold process reload
+retained every record, item total, zenny, active skill and hunter statistic.
+The result rendered with HD Textures v4, HD UI v4 and the hunter-font replacement
+at 2560x1440 internal resolution in an isolated window (2488x1400 capture).
+These visual checks cover the exercised sets, not every armor model.
+
+The final Utility hook-order candidate
+`2e869f39ab573e2c0c64f2a214364009b0691317c61c98c58bdd602c769b15e1`
+was loaded with Fusion for the multiplayer run; the other client had neither
+plugin. Actual native Create/Search Hub, quest posting/joining, standby and
+departure placed both clients in Hub quest 10101, stage 1, camp, distinct slots.
+The unmodified observer rendered all five Gunner appearances on the Blademaster
+host. All seven equipment records, decorations, per-piece skill points, active
+skills, identity, health and resistances matched on both sides. Utility's
+in-quest gathering menu opened and closed while the session remained connected.
+
+Raw quest attack/defense initially differed by +6/+12 on each owner's local
+hunter, including the unfused stock control. Both carried Powercharm (item40)
+and Armorcharm (item42). Native functions `0x2e2498` and `0x2e2fdc` apply those
+bonuses through the owner-only pouch query `0x48813c` / local flag `+0x13cc`.
+The actual native pouch-gate bodies were also executed independently in ARM
+emulation. Removing only those known local bonuses from comparison produced
+exact two-way base-stat parity; an injected one-point discrepancy still failed.
+Raw captures were preserved unchanged. This was not a fusion or network-stat fix.
+Both clients then used native Abandon Quest and Save prompts, returned to town,
+and retained the original equipment records, inventory totals and hunter stats.
+
+Private logs, before/paid/separated snapshots, native-save comparisons, plugin
+hashes and multiplayer proof remain in ignored `build/pr-ready-lab/`. This pass
+does not establish Windows/Android, WAN/NAT, four players, every armor pair or
+completed quest rewards. Native transactions retained both the exercised Blademaster and Gunner bases
+with their respective weapons; helper tests cover all five slots in both
+directions. The UI still respects the base armor's native equipment restrictions.
+
+Screenshots: [decorated universal base with Gunner appearance](screenshots/crossclass-universal.webp),
+[unmodified multiplayer observer](screenshots/crossclass-multiplayer.webp).
+
+## KatSmithy startup compatibility - 24 November 2026
+
+With the copied full mod stack on the actual Windows Recomp 0.19.2 executable
+**under Wine on Linux**, Fusion's old onInit hook made KatSmithy's first-update
+stock-prologue probe fail (`smithy_win ... GUARD MISMATCH`). Candidate Fusion
+`c4aa1f81a99d970bd702d2205b1821a28b61c1afa6b85d2eea91f7ec8512c4b8`
+keeps text-base/catalog validation in onInit, then preflights and installs all
+hooks once on the second update. Safe chains additionally accept the verified
+Windows spill arena `[0xf0100000,0xf8100000)`; alignment and caller-sensitive
+rejections remain enforced.
+
+The copied-stack hook snapshot resolves game → Fusion `0xf17a4798` → Utility
+`0x033b177c` → KatSmithy `0xf01536f4` → native continuation. This is Windows-build
+execution under Wine, not physical/native Windows OS coverage. Full native-menu
+and UI validation is recorded separately from this startup-chain evidence.
+
+```sh
+make all test test-native GAME_DIR=/home/rikiar/Games/MHGU/data ARM_PYTHON=/tmp/fusion-issue-venv/bin/python
+```
+
+All checks passed, including compiled ARM chaining through a high peer in both
+callback orders, dynamic callback exports, spill boundaries, one-shot failure,
+and unchanged class/pair rules. The earlier paid cross-class transactions and
+two-client quest/appearance/stat pass used Fusion
+`320b2a48018f9b0c0bf6a0b3a75f6b3b2bee19693633511fed0842bbc3506b22`.
+They must not be relabeled as multiplayer tests of the new candidate: this
+candidate changes startup scheduling and safe-entry recognition, not fusion
+policy, classification, transactions or networking.
+
+The same copied full nine-plugin Windows stack then passed KatSmithy's complete
+weapon tree with its 3D preview, native Upgrade Equipment wishlist add/remove,
+and the actual Fusion menu/armor-selector open and cancel. Selector teardown
+restored both UI pointers to zero with byte-identical stable equipment, item
+box, pouch and unchanged 460476z. KatSmithy accepted its stock first-update probe;
+all 16 Fusion hooks were installed. These checks used a separate Wine prefix,
+Xvfb, loopback-only network and private software Vulkan renderer, without
+controlling or restarting the user's game. The installed main files match these
+exact tested candidate NRO hashes; the original files/load order were backed up.

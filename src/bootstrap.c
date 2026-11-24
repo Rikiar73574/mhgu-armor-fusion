@@ -45,10 +45,21 @@ void forge_onLoad(void *params) {
     uint16_t *v=params;v[0]=1;v[1]=5;v[2]=1;
     memcpy((uint8_t *)params+6,"Armor Fusion",sizeof "Armor Fusion");
 }
+static bool bootstrap_ready;
+static bool first_update=true;
 void forge_onInit(void) {
     if((uintptr_t)forge_mem_getMainTextAddr()!=0x00200000u) {
         LOG("[armor-fusion] unsupported executable text base; hooks not installed");return;
     }
     if(!fusion_catalog_load()) {LOG("[armor-fusion] invalid embedded AFUS catalog; hooks not installed");return;}
+    bootstrap_ready=true;
+}
+void forge_onUpdate(float dt) {
+    (void)dt;
+    if(!bootstrap_ready) return;
+    /* Stock-only peers may install during their first update. Wait for one
+     * complete callback round before preflighting and installing any hook. */
+    if(first_update) {first_update=false;return;}
+    bootstrap_ready=false; /* Installation/preflight remains a one-shot attempt. */
     armorfusion_init();
 }

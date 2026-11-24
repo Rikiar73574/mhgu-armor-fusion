@@ -11,11 +11,11 @@ typedef uint32_t (*Native8)(uint32_t,uint32_t,uint32_t,uint32_t,
 typedef uint32_t (*Entry)(void);
 #define DECL(n) extern uint32_t fusion_entry_##n(void)
 DECL(0); DECL(1); DECL(2); DECL(3); DECL(4); DECL(5); DECL(6);
-DECL(7); DECL(8); DECL(9); DECL(10); DECL(11); DECL(12);
+DECL(7); DECL(8); DECL(9); DECL(10); DECL(11); DECL(12); DECL(13); DECL(14); DECL(15);
 static const Entry entries[]={fusion_entry_0,fusion_entry_1,fusion_entry_2,
     fusion_entry_3,fusion_entry_4,fusion_entry_5,fusion_entry_6,fusion_entry_7,
-    fusion_entry_8,fusion_entry_9,fusion_entry_10,fusion_entry_11,fusion_entry_12};
-static struct { HostFn handler; uint32_t target,original; } hooks[13];
+    fusion_entry_8,fusion_entry_9,fusion_entry_10,fusion_entry_11,fusion_entry_12,fusion_entry_13,fusion_entry_14,fusion_entry_15};
+static struct { HostFn handler; uint32_t target,original; } hooks[16];
 static unsigned registered;
 static uint8_t strings[128] __attribute__((aligned(8)));
 static uint32_t strings_used;
@@ -62,7 +62,7 @@ uint32_t hle_alloc(uint32_t size) {
 }
 uint32_t hle_register(const char *name,HostFn fn) {
     (void)name;
-    if(registered>=13) FATAL("[armor-fusion] too many native hooks");
+    if(registered>=16) FATAL("[armor-fusion] too many native hooks");
     hooks[registered].handler=fn; return ++registered;
 }
 void fnhook_set(uint32_t target,uint32_t token) {
@@ -77,5 +77,7 @@ bool fusion_entry_matches(uint32_t address,uint32_t stock,bool caller_sensitive)
     if(first==stock) return true;
     if(caller_sensitive || first!=0xe51ff004u) return false;
     uint32_t detour=LD32(address+4);
-    return !(detour&3) && detour>=0x03200000u && detour<0x03e00000u;
+    /* Stock Recomp arena and the verified Windows 0.19.2 overflow arena. */
+    return !(detour&3) && ((detour>=0x03200000u && detour<0x03e00000u) ||
+                          (detour>=0xf0100000u && detour<0xf8100000u));
 }

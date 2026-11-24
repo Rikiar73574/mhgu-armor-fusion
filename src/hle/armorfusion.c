@@ -11,6 +11,9 @@
 #define FN_CLOSE        0x86549cu
 #define FN_VALID        0x340b7cu
 #define FN_PAIR         0x340d60u
+#define FN_BLADEMASTER  0x2db0b0u
+#define FN_GUNNER       0x2db160u
+#define FN_CLASS_NARROW 0x2db210u
 #define FN_QUOTE        0x341060u
 #define FN_CONFIRM      0x74fd94u
 #define FN_CONSUME      0x74ff80u
@@ -412,6 +415,29 @@ static void validity(Cpu *c) {
     }
 }
 
+// Native class helpers normally narrow universal armor to its appearance's
+// class. Class is gameplay data: retain the base's native answer for fused
+// hunter armor. Only the private copy hides +8; the saved appearance, level,
+// decorations and base ID remain untouched. These helpers and their metadata
+// lookup read only the first ten bytes, never retain the record address, and
+// have no record side effects.
+static void base_class(Cpu *c, uint32_t target) {
+    uint32_t record = c->r[0];
+    unsigned slot = record ? LD16(record + 4) & 31 : 0;
+    if (slot >= 1 && slot <= 5 && LD16(record + 8)) {
+        uint16_t copy[5] __attribute__((aligned(4)));
+        memcpy(copy, G2H(record), sizeof copy);
+        copy[4] = 0;
+        c->r[0] = (uint32_t)(uintptr_t)copy;
+        fnhook_call_original(c, target);
+        return;
+    }
+    fnhook_call_original(c, target);
+}
+static void blademaster(Cpu *c) { base_class(c, FN_BLADEMASTER); }
+static void gunner(Cpu *c) { base_class(c, FN_GUNNER); }
+static void class_narrow(Cpu *c) { base_class(c, FN_CLASS_NARROW); }
+
 static void pair(Cpu *c) {
     uint32_t b = c->r[1], a = c->r[2];
     fnhook_call_original(c, FN_PAIR);
@@ -419,7 +445,13 @@ static void pair(Cpu *c) {
     FusionPiece base = decode_piece(b, 0), appearance = decode_piece(a, 0);
     FusionRecipe recipe;
     if (!fusion_recipe(&base, &appearance, &recipe) || base.rank == FUSION_RANK_UNKNOWN ||
-        base.rank != appearance.rank) c->r[0] |= 0x400;
+        base.rank != appearance.rank || base.slot != appearance.slot) c->r[0] |= 0x400;
+    else {
+        // 0x340e6c..0x340f54 sets only bit 0x20 for class incompatibility.
+        // Base class remains enforced when equipping; retain every other
+        // native restriction, including sex, decorations and already-fused.
+        c->r[0] &= ~0x20u;
+    }
 }
 
 static void quote(Cpu *c) {
@@ -720,6 +752,7 @@ void armorfusion_init(void) {
         {FN_SMITH_UPDATE, 0xe92d41f0}, {FN_UPDATE, 0xe92d4830},
         {FN_CLOSE, 0xe3a01001}, {FN_MESSAGE, 0xe590005c},
         {FN_VALID, 0xe92d4070}, {FN_PAIR, 0xe92d4ff0},
+        {FN_BLADEMASTER, 0xe92d4070}, {FN_GUNNER, 0xe92d4070}, {FN_CLASS_NARROW, 0xe92d4070},
         {FN_QUOTE, 0xe92d41f0}, {FN_CONSUME, 0xe92d4070},
         {FN_CONFIRM, 0xe92d4800},
         {FN_CONSTRUCT, 0xe92d4010}, {FN_REGISTER, 0xe92d4010},
@@ -760,4 +793,7 @@ void armorfusion_init(void) {
     fnhook_set(FN_SMITH_CLOSE, hle_register("armorfusion:smith_close", smith_close));
     fnhook_set(FN_SMITH_DTOR, hle_register("armorfusion:smith_dtor", smith_dtor));
     fnhook_set(FN_SMITH_DELETE, hle_register("armorfusion:smith_delete", smith_delete));
+    fnhook_set(FN_BLADEMASTER, hle_register("armorfusion:blademaster", blademaster));
+    fnhook_set(FN_GUNNER, hle_register("armorfusion:gunner", gunner));
+    fnhook_set(FN_CLASS_NARROW, hle_register("armorfusion:class_narrow", class_narrow));
 }
